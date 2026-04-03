@@ -1,46 +1,8 @@
 #!/usr/bin/env bash
-# =============================================================================
-# icloud_backup.sh
-# Backs up iCloud Drive to an external hard drive, folder by folder,
-# evicting each folder after a successful copy to keep Mac disk usage low.
-# Optionally wraps the backup in a VeraCrypt encrypted volume.
+# icloud_backup.sh — Back up iCloud Drive to an external drive, folder by folder.
+# See README.md for full documentation, setup instructions, and examples.
 #
-# Usage:
-#   ./icloud_backup.sh                          # Plain backup, no encryption
-#   ./icloud_backup.sh --dry-run                # Preview only, no changes
-#   ./icloud_backup.sh --veracrypt              # Backup into VeraCrypt volume
-#   ./icloud_backup.sh --veracrypt --dry-run    # Preview with VeraCrypt paths
-#   ./icloud_backup.sh --mirror                 # True mirror (deletes removed files from backup)
-#   ./icloud_backup.sh --exclude=Photos         # Skip specific folders
-#   ./icloud_backup.sh --exclude='*.tmp'        # Exclude by pattern
-#   ./icloud_backup.sh --verify                 # Checksum verification after copy
-#
-# =============================================================================
-# FIRST-TIME VERACRYPT SETUP (do this once before running with --veracrypt)
-# =============================================================================
-# 1. Download and install VeraCrypt from https://veracrypt.io
-#
-# 2. Open VeraCrypt and click "Create Volume"
-#
-# 3. Choose "Create an encrypted file container"
-#
-# 4. Choose "Standard VeraCrypt volume"
-#
-# 5. Click "Select File", navigate to your external drive (e.g.
-#    /Volumes/MyExternalDrive) and save the file as: encrypted.vc
-#    This creates the file: /Volumes/MyExternalDrive/encrypted.vc
-#
-# 6. Choose encryption: AES + SHA-512 (strong defaults, fine for backup)
-#
-# 7. Set the volume size to match your iCloud data size (leave some headroom)
-#
-# 8. Set a strong password — store it somewhere safe (password manager, etc.)
-#    This is the password the script will prompt you for at runtime.
-#
-# 9. Format the volume as exFAT (cross-platform) or HFS+ (Mac only)
-#
-# 10. Update VERACRYPT_VOLUME and VERACRYPT_MOUNT below to match your paths.
-# =============================================================================
+# Usage: ./icloud_backup.sh [--dry-run] [--veracrypt] [--mirror] [--verify] [--exclude=PATTERN ...]
 
 set -uo pipefail
 
@@ -105,7 +67,7 @@ mount_veracrypt() {
 
   if [[ ! -f "$VERACRYPT_VOLUME" ]]; then
     error "VeraCrypt volume file not found: $VERACRYPT_VOLUME"
-    error "Please create the volume first — see the setup instructions at the top of this script."
+    error "Please create the volume first — see README.md for setup instructions."
     exit 1
   fi
 
