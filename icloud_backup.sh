@@ -287,6 +287,20 @@ for ITEM in "$ICLOUD_DIR"/*; do
   fi
 
   # ----------------------------------------------------------
+  # Per-item disk space check
+  # ----------------------------------------------------------
+  if ! $DRY_RUN; then
+    ITEM_SIZE_KB=$(du -sk "$ITEM" 2>/dev/null | awk '{print $1}')
+    DEST_FREE_KB=$(df -k "$BACKUP_DIR" | awk 'NR==2 {print $4}')
+    if (( ITEM_SIZE_KB > DEST_FREE_KB )); then
+      ITEM_MB=$(( ITEM_SIZE_KB / 1024 ))
+      DEST_MB=$(( DEST_FREE_KB / 1024 ))
+      error "Not enough space for $ITEM_NAME (${ITEM_MB} MB needed, ${DEST_MB} MB free) — skipping"
+      continue
+    fi
+  fi
+
+  # ----------------------------------------------------------
   # rsync to destination
   # ----------------------------------------------------------
   log "📦 Copying: $ITEM_NAME → $BACKUP_DIR/"
