@@ -102,13 +102,15 @@ mount_veracrypt() {
   read -rs VC_PASSWORD
   echo ""
 
-  if ! echo "$VC_PASSWORD" | "$VERACRYPT_CLI" \
+  if ! "$VERACRYPT_CLI" \
       --text \
       --non-interactive \
       --mount "$VERACRYPT_VOLUME" "$VERACRYPT_MOUNT" \
       --password="$VC_PASSWORD" \
       --keyfiles="" \
       --protect-hidden=no 2>>"$LOG_FILE"; then
+    # Clear the password from memory before exiting
+    unset VC_PASSWORD
     error "Failed to mount VeraCrypt volume. Wrong password, or the volume is already mounted."
     exit 1
   fi
