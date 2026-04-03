@@ -79,10 +79,18 @@ for arg in "$@"; do
 done
 
 # -----------------------------------------------------------------------------
-# Log setup
+# Log setup — logs stored in ~/Library/Logs/icloud-backup/
+# Old logs beyond the most recent 10 are automatically removed.
 # -----------------------------------------------------------------------------
-LOG_FILE="$HOME/icloud_backup_$(date +%Y%m%d_%H%M%S).log"
+LOG_DIR="$HOME/Library/Logs/icloud-backup"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/icloud_backup_$(date +%Y%m%d_%H%M%S).log"
 ERROR_COUNT=0
+
+# Auto-cleanup: keep only the 10 most recent log files
+while IFS= read -r OLD_LOG; do
+  rm -f "$OLD_LOG"
+done < <(ls -1t "$LOG_DIR"/icloud_backup_*.log 2>/dev/null | tail -n +11)
 
 log()   { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 error() { echo "[$(date '+%H:%M:%S')] ❌ ERROR: $*" | tee -a "$LOG_FILE"; ((ERROR_COUNT++)) || true; }
