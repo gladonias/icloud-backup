@@ -238,10 +238,19 @@ log "Scanning iCloud Drive..."
 FOLDER_COUNT=0
 SUCCESS_COUNT=0
 
+# Count total items for progress display
+TOTAL_ITEMS=0
+for _ITEM in "$ICLOUD_DIR"/*; do
+  [[ -e "$_ITEM" ]] && ((TOTAL_ITEMS++)) || true
+done
+log "Found $TOTAL_ITEMS items in iCloud Drive"
+
 for ITEM in "$ICLOUD_DIR"/*; do
   [[ ! -e "$ITEM" ]] && continue
 
+  ((FOLDER_COUNT++)) || true
   ITEM_NAME="$(basename "$ITEM")"
+  log "--- [$FOLDER_COUNT/$TOTAL_ITEMS] $ITEM_NAME ---"
 
   # ----------------------------------------------------------
   # Skip excluded items (avoids unnecessary iCloud downloads)
@@ -317,7 +326,6 @@ for ITEM in "$ICLOUD_DIR"/*; do
     error "rsync failed for: $ITEM_NAME — skipping eviction"
   fi
 
-  ((FOLDER_COUNT++)) || true
   echo ""
 done
 
