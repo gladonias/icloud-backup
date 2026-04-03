@@ -13,6 +13,7 @@
 #   ./icloud_backup.sh --mirror                 # True mirror (deletes removed files from backup)
 #   ./icloud_backup.sh --exclude=Photos         # Skip specific folders
 #   ./icloud_backup.sh --exclude='*.tmp'        # Exclude by pattern
+#   ./icloud_backup.sh --verify                 # Checksum verification after copy
 #
 # =============================================================================
 # FIRST-TIME VERACRYPT SETUP (do this once before running with --veracrypt)
@@ -59,6 +60,7 @@ VERACRYPT_CLI="/Applications/VeraCrypt.app/Contents/MacOS/VeraCrypt"
 DRY_RUN=false
 USE_VERACRYPT=false
 MIRROR=false
+VERIFY=false
 EXCLUDES=()
 
 for arg in "$@"; do
@@ -66,10 +68,11 @@ for arg in "$@"; do
     --dry-run)    DRY_RUN=true ;;
     --veracrypt)  USE_VERACRYPT=true ;;
     --mirror)     MIRROR=true ;;
+    --verify)     VERIFY=true ;;
     --exclude=*)  EXCLUDES+=("${arg#--exclude=}") ;;
     *)
       echo "Unknown flag: $arg"
-      echo "Usage: $0 [--dry-run] [--veracrypt] [--mirror] [--exclude=PATTERN ...]"
+      echo "Usage: $0 [--dry-run] [--veracrypt] [--mirror] [--verify] [--exclude=PATTERN ...]"
       exit 1
       ;;
   esac
@@ -290,6 +293,17 @@ for ITEM in "$ICLOUD_DIR"/*; do
   log "📦 Copying: $ITEM_NAME → $BACKUP_DIR/"
   if rsync "${RSYNC_OPTS[@]}" "$ITEM" "$BACKUP_DIR/" 2>>"$LOG_FILE"; then
     log "   ✅ Copy succeeded: $ITEM_NAME"
+
+    # Verify backup integrity with checksum comparison
+    if $VERIFY && ! $DRY_RUN; then
+      log "🔍 Verifying: $ITEM_NAME"
+      if rsync -a --checksum --dry-run "$ITEM" "$BACKUP_DIR/" 2>>"$LOG_FILE" | grep -q .; then
+        error "Verification failed for: $ITEM_NAME — checksums differ"
+      else
+        log "   ✅ Verification passed: $ITEM_NAME"
+      fi
+    fi
+
     ((SUCCESS_COUNT++)) || true
 
     # Evict from local Mac storage to free up space for the next folder
