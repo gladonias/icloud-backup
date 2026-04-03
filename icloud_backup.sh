@@ -10,6 +10,9 @@
 #   ./icloud_backup.sh --dry-run                # Preview only, no changes
 #   ./icloud_backup.sh --veracrypt              # Backup into VeraCrypt volume
 #   ./icloud_backup.sh --veracrypt --dry-run    # Preview with VeraCrypt paths
+#   ./icloud_backup.sh --mirror                 # True mirror (deletes removed files from backup)
+#   ./icloud_backup.sh --exclude=Photos         # Skip specific folders
+#   ./icloud_backup.sh --exclude='*.tmp'        # Exclude by pattern
 #
 # =============================================================================
 # FIRST-TIME VERACRYPT SETUP (do this once before running with --veracrypt)
@@ -55,14 +58,18 @@ VERACRYPT_CLI="/Applications/VeraCrypt.app/Contents/MacOS/VeraCrypt"
 # -----------------------------------------------------------------------------
 DRY_RUN=false
 USE_VERACRYPT=false
+MIRROR=false
+EXCLUDES=()
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run)    DRY_RUN=true ;;
     --veracrypt)  USE_VERACRYPT=true ;;
+    --mirror)     MIRROR=true ;;
+    --exclude=*)  EXCLUDES+=("${arg#--exclude=}") ;;
     *)
       echo "Unknown flag: $arg"
-      echo "Usage: $0 [--dry-run] [--veracrypt]"
+      echo "Usage: $0 [--dry-run] [--veracrypt] [--mirror] [--exclude=PATTERN ...]"
       exit 1
       ;;
   esac
@@ -153,6 +160,10 @@ log "===== iCloud Backup Started ====="
 log "Source     : $ICLOUD_DIR"
 log "Destination: $BACKUP_DIR"
 log "VeraCrypt  : $($USE_VERACRYPT && echo "YES — $VERACRYPT_VOLUME" || echo "NO")"
+log "Mirror     : $($MIRROR && echo "YES (--delete)" || echo "NO (incremental only)")"
+if (( ${#EXCLUDES[@]} > 0 )); then
+  log "Excludes   : ${EXCLUDES[*]}"
+fi
 log "Log file   : $LOG_FILE"
 $DRY_RUN && log "Mode       : DRY RUN" || log "Mode       : LIVE"
 echo ""
@@ -206,9 +217,14 @@ fi
 #   -h             human-readable sizes
 #   --progress     per-file progress
 #   --ignore-errors  keep going on read errors
+#   --delete       (mirror mode only) remove files from dest not in source
 # -----------------------------------------------------------------------------
 RSYNC_OPTS=(-a -u -h --progress --ignore-errors --log-file="$LOG_FILE")
 $DRY_RUN && RSYNC_OPTS+=(--dry-run)
+$MIRROR && RSYNC_OPTS+=(--delete)
+for EXCL in "${EXCLUDES[@]}"; do
+  RSYNC_OPTS+=(--exclude="$EXCL")
+done
 
 # -----------------------------------------------------------------------------
 # Main loop — iterate over every top-level item in iCloud Drive
@@ -223,6 +239,22 @@ for ITEM in "$ICLOUD_DIR"/*; do
   [[ ! -e "$ITEM" ]] && continue
 
   ITEM_NAME="$(basename "$ITEM")"
+
+  # ----------------------------------------------------------
+  # Skip excluded items (avoids unnecessary iCloud downloads)
+  # ----------------------------------------------------------
+  SKIP=false
+  for EXCL in "${EXCLUDES[@]}"; do
+    # Match exact folder name or shell glob pattern
+    if [[ "$ITEM_NAME" == $EXCL ]]; then
+      SKIP=true
+      break
+    fi
+  done
+  if $SKIP; then
+    log "⏭️  Skipping excluded item: $ITEM_NAME"
+    continue
+  fi
 
   # ----------------------------------------------------------
   # Trigger iCloud download for this item
