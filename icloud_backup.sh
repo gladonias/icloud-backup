@@ -269,6 +269,20 @@ for ITEM in "$ICLOUD_DIR"/*; do
   fi
 
   # ----------------------------------------------------------
+  # Skip items already up-to-date on destination
+  # ----------------------------------------------------------
+  if ! $DRY_RUN && [[ -e "$BACKUP_DIR/$ITEM_NAME" ]]; then
+    # A dry-run rsync with -i (itemize) shows what would transfer;
+    # empty output means the destination is already current.
+    CHANGES=$(rsync -a -u -i --dry-run "$ITEM" "$BACKUP_DIR/" 2>/dev/null | head -5)
+    if [[ -z "$CHANGES" ]]; then
+      log "⏭️  Already up-to-date: $ITEM_NAME"
+      ((SUCCESS_COUNT++)) || true
+      continue
+    fi
+  fi
+
+  # ----------------------------------------------------------
   # Trigger iCloud download for this item
   # ----------------------------------------------------------
   if ! $DRY_RUN; then
