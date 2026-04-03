@@ -305,12 +305,23 @@ for ITEM in "$ICLOUD_DIR"/*; do
 
     ((SUCCESS_COUNT++)) || true
 
-    # Evict from local Mac storage to free up space for the next folder
+    # Evict from local Mac storage to free up space for the next folder.
+    # Like brctl download, evict does not recurse — evict files individually.
     if ! $DRY_RUN; then
       log "🗑️  Evicting from local storage: $ITEM_NAME"
-      brctl evict "$ITEM" 2>>"$LOG_FILE" \
-        && log "   ✅ Evicted: $ITEM_NAME" \
-        || log "   ⚠️  Eviction skipped (may not be evictable): $ITEM_NAME"
+      if [[ -d "$ITEM" ]]; then
+        EVICT_FAILED=false
+        while IFS= read -r -d '' FILE; do
+          brctl evict "$FILE" 2>>"$LOG_FILE" || EVICT_FAILED=true
+        done < <(find "$ITEM" -type f -print0 2>/dev/null)
+        $EVICT_FAILED \
+          && log "   ⚠️  Some files could not be evicted: $ITEM_NAME" \
+          || log "   ✅ Evicted: $ITEM_NAME"
+      else
+        brctl evict "$ITEM" 2>>"$LOG_FILE" \
+          && log "   ✅ Evicted: $ITEM_NAME" \
+          || log "   ⚠️  Eviction skipped (may not be evictable): $ITEM_NAME"
+      fi
     fi
   else
     error "rsync failed for: $ITEM_NAME — skipping eviction"
