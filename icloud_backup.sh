@@ -228,7 +228,15 @@ for ITEM in "$ICLOUD_DIR"/*; do
   # ----------------------------------------------------------
   if ! $DRY_RUN; then
     log "⬇️  Triggering iCloud download for: $ITEM_NAME"
+
+    # Download the top-level item and any nested .icloud stubs individually,
+    # since brctl download does not recurse into subdirectories.
     brctl download "$ITEM" 2>>"$LOG_FILE" || log "   (brctl download skipped — may already be local)"
+    if [[ -d "$ITEM" ]]; then
+      while IFS= read -r -d '' STUB; do
+        brctl download "$STUB" 2>>"$LOG_FILE" || true
+      done < <(find "$ITEM" -name "*.icloud" -type f -print0 2>/dev/null)
+    fi
 
     log "   Waiting for download to complete..."
     WAIT=0
