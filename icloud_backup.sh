@@ -189,11 +189,12 @@ if ! $DRY_RUN; then
   fi
 
   # Warn if less than 1 GB free on destination
-  FREE_BYTES=$(df -k "$BACKUP_DIR" | awk 'NR==2 {print $4}')
-  FREE_GB=$(echo "scale=1; $FREE_BYTES/1048576" | bc)
-  log "Destination free space: ${FREE_GB} GB"
-  if (( FREE_BYTES < 1048576 )); then
-    error "Less than 1 GB free on destination. Aborting."
+  FREE_KB=$(df -k "$BACKUP_DIR" | awk 'NR==2 {print $4}')
+  FREE_GB=$(( FREE_KB / 1048576 ))
+  FREE_GB_FRAC=$(( (FREE_KB % 1048576) * 10 / 1048576 ))
+  log "Destination free space: ${FREE_GB}.${FREE_GB_FRAC} GB"
+  if (( FREE_KB < 1048576 )); then
+    error "Less than 1 GB free on destination (${FREE_GB}.${FREE_GB_FRAC} GB). Aborting."
     exit 1
   fi
 fi
