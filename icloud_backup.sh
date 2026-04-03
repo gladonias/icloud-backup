@@ -7,14 +7,20 @@
 set -uo pipefail
 
 # -----------------------------------------------------------------------------
-# Configuration — edit these before running
+# Configuration defaults — override via ~/.icloud_backup.conf or env vars
 # -----------------------------------------------------------------------------
-ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
-BACKUP_DIR="/Volumes/iCloudBackup"                        # mount point when using VeraCrypt,
-                                                          # or a plain folder path without it
-VERACRYPT_VOLUME="/Volumes/MyExternalDrive/encrypted.vc"  # path to your .vc file on the drive
-VERACRYPT_MOUNT="/Volumes/iCloudBackup"                   # where VeraCrypt will mount it
-VERACRYPT_CLI="/Applications/VeraCrypt.app/Contents/MacOS/VeraCrypt"
+ICLOUD_DIR="${ICLOUD_DIR:-$HOME/Library/Mobile Documents/com~apple~CloudDocs}"
+BACKUP_DIR="${BACKUP_DIR:-/Volumes/iCloudBackup}"
+VERACRYPT_VOLUME="${VERACRYPT_VOLUME:-/Volumes/MyExternalDrive/encrypted.vc}"
+VERACRYPT_MOUNT="${VERACRYPT_MOUNT:-/Volumes/iCloudBackup}"
+VERACRYPT_CLI="${VERACRYPT_CLI:-/Applications/VeraCrypt.app/Contents/MacOS/VeraCrypt}"
+
+# Source user config file if it exists (overrides the defaults above)
+CONF_FILE="${ICLOUD_BACKUP_CONF:-$HOME/.icloud_backup.conf}"
+if [[ -f "$CONF_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONF_FILE"
+fi
 
 # -----------------------------------------------------------------------------
 # Parse flags
