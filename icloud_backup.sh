@@ -2,7 +2,7 @@
 # icloud_backup.sh — Back up iCloud Drive to an external drive, folder by folder.
 # See README.md for full documentation, setup instructions, and examples.
 #
-# Usage: ./icloud_backup.sh [--dry-run] [--veracrypt] [--mirror] [--verify] [--exclude=PATTERN ...]
+# Usage: ./icloud_backup.sh [--dry-run] [--veracrypt] [--mirror] [--verify] [--quiet] [--exclude=PATTERN ...]
 
 set -uo pipefail
 
@@ -29,6 +29,7 @@ DRY_RUN=false
 USE_VERACRYPT=false
 MIRROR=false
 VERIFY=false
+QUIET=false
 EXCLUDES=()
 
 for arg in "$@"; do
@@ -37,10 +38,11 @@ for arg in "$@"; do
     --veracrypt)  USE_VERACRYPT=true ;;
     --mirror)     MIRROR=true ;;
     --verify)     VERIFY=true ;;
+    --quiet)      QUIET=true ;;
     --exclude=*)  EXCLUDES+=("${arg#--exclude=}") ;;
     *)
       echo "Unknown flag: $arg"
-      echo "Usage: $0 [--dry-run] [--veracrypt] [--mirror] [--verify] [--exclude=PATTERN ...]"
+      echo "Usage: $0 [--dry-run] [--veracrypt] [--mirror] [--verify] [--quiet] [--exclude=PATTERN ...]"
       exit 1
       ;;
   esac
@@ -60,8 +62,13 @@ while IFS= read -r OLD_LOG; do
   rm -f "$OLD_LOG"
 done < <(ls -1t "$LOG_DIR"/icloud_backup_*.log 2>/dev/null | tail -n +11)
 
-log()   { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
-error() { echo "[$(date '+%H:%M:%S')] ❌ ERROR: $*" | tee -a "$LOG_FILE"; ((ERROR_COUNT++)) || true; }
+if $QUIET; then
+  log()   { echo "[$(date '+%H:%M:%S')] $*" >> "$LOG_FILE"; }
+  error() { echo "[$(date '+%H:%M:%S')] ❌ ERROR: $*" >> "$LOG_FILE"; ((ERROR_COUNT++)) || true; }
+else
+  log()   { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
+  error() { echo "[$(date '+%H:%M:%S')] ❌ ERROR: $*" | tee -a "$LOG_FILE"; ((ERROR_COUNT++)) || true; }
+fi
 
 # -----------------------------------------------------------------------------
 # VeraCrypt mount / unmount functions
@@ -145,7 +152,7 @@ if (( ${#EXCLUDES[@]} > 0 )); then
 fi
 log "Log file   : $LOG_FILE"
 $DRY_RUN && log "Mode       : DRY RUN" || log "Mode       : LIVE"
-echo ""
+$QUIET || echo ""
 
 # -----------------------------------------------------------------------------
 # Pre-flight checks
@@ -198,7 +205,8 @@ fi
 #   --ignore-errors  keep going on read errors
 #   --delete       (mirror mode only) remove files from dest not in source
 # -----------------------------------------------------------------------------
-RSYNC_OPTS=(-a -u -h --progress --ignore-errors --log-file="$LOG_FILE")
+RSYNC_OPTS=(-a -u -h --ignore-errors --log-file="$LOG_FILE")
+$QUIET || RSYNC_OPTS+=(--progress)
 $DRY_RUN && RSYNC_OPTS+=(--dry-run)
 $MIRROR && RSYNC_OPTS+=(--delete)
 for EXCL in "${EXCLUDES[@]}"; do
@@ -341,7 +349,7 @@ for ITEM in "$ICLOUD_DIR"/*; do
     error "rsync failed for: $ITEM_NAME — skipping eviction"
   fi
 
-  echo ""
+  $QUIET || echo ""
 done
 
 # -----------------------------------------------------------------------------
