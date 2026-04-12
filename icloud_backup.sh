@@ -198,14 +198,15 @@ fi
 
 # -----------------------------------------------------------------------------
 # rsync options
-#   -a             archive mode (permissions, timestamps, symlinks, etc.)
-#   -u             skip files that are newer on destination (overwrite if newer)
-#   -h             human-readable sizes
-#   --progress     per-file progress
+#   -a               archive mode (permissions, timestamps, symlinks, etc.)
+#   -u               skip files that are newer on destination (overwrite if newer)
+#   -h               human-readable sizes
+#   --copy-dirlinks  follow symlinks to directories (e.g. Documents, Downloads
+#                    which macOS symlinks into iCloud Drive)
 #   --ignore-errors  keep going on read errors
-#   --delete       (mirror mode only) remove files from dest not in source
+#   --delete         (mirror mode only) remove files from dest not in source
 # -----------------------------------------------------------------------------
-RSYNC_OPTS=(-a -u -h --ignore-errors --log-file="$LOG_FILE")
+RSYNC_OPTS=(-a -u -h --copy-dirlinks --ignore-errors --log-file="$LOG_FILE")
 $QUIET || RSYNC_OPTS+=(--progress)
 $DRY_RUN && RSYNC_OPTS+=(--dry-run)
 $MIRROR && RSYNC_OPTS+=(--delete)
@@ -258,7 +259,7 @@ for ITEM in "$ICLOUD_DIR"/*; do
   if ! $DRY_RUN && [[ -e "$BACKUP_DIR/$ITEM_NAME" ]]; then
     # A dry-run rsync with -i (itemize) shows what would transfer;
     # empty output means the destination is already current.
-    CHANGES=$(rsync -a -u -i --dry-run "$ITEM" "$BACKUP_DIR/" 2>/dev/null | head -5)
+    CHANGES=$(rsync -a -u -i --copy-dirlinks --dry-run "$ITEM" "$BACKUP_DIR/" 2>/dev/null | head -5)
     if [[ -z "$CHANGES" ]]; then
       log "⏭️  Already up-to-date: $ITEM_NAME"
       ((SUCCESS_COUNT++)) || true
@@ -318,7 +319,7 @@ for ITEM in "$ICLOUD_DIR"/*; do
     # Verify backup integrity with checksum comparison
     if $VERIFY && ! $DRY_RUN; then
       log "🔍 Verifying: $ITEM_NAME"
-      if rsync -a --checksum --dry-run "$ITEM" "$BACKUP_DIR/" 2>>"$LOG_FILE" | grep -q .; then
+      if rsync -a --checksum --copy-dirlinks --dry-run "$ITEM" "$BACKUP_DIR/" 2>>"$LOG_FILE" | grep -q .; then
         error "Verification failed for: $ITEM_NAME — checksums differ"
       else
         log "   ✅ Verification passed: $ITEM_NAME"
