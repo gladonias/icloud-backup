@@ -209,7 +209,7 @@ RSYNC_OPTS=(-a -u -h --ignore-errors --log-file="$LOG_FILE")
 $QUIET || RSYNC_OPTS+=(--progress)
 $DRY_RUN && RSYNC_OPTS+=(--dry-run)
 $MIRROR && RSYNC_OPTS+=(--delete)
-for EXCL in "${EXCLUDES[@]}"; do
+for EXCL in "${EXCLUDES[@]+"${EXCLUDES[@]}"}"; do
   RSYNC_OPTS+=(--exclude="$EXCL")
 done
 
@@ -240,7 +240,7 @@ for ITEM in "$ICLOUD_DIR"/*; do
   # Skip excluded items (avoids unnecessary iCloud downloads)
   # ----------------------------------------------------------
   SKIP=false
-  for EXCL in "${EXCLUDES[@]}"; do
+  for EXCL in "${EXCLUDES[@]+"${EXCLUDES[@]}"}"; do
     # Match exact folder name or shell glob pattern
     if [[ "$ITEM_NAME" == $EXCL ]]; then
       SKIP=true
