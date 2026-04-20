@@ -15,7 +15,7 @@ A macOS shell script that backs up iCloud Drive to an external drive, folder by 
 - **Per-item space checks** — verifies sufficient disk space before each copy to avoid mid-write failures
 - **Quiet mode** — `--quiet` suppresses terminal output for cron/scheduled use (logs to file only)
 - **External config file** — override defaults via `~/.icloud_backup.conf` or environment variables, no need to edit the script
-- **Symlink-aware** — follows directory symlinks (Documents, Downloads) that macOS creates when "Desktop & Documents Folders" is enabled in iCloud
+- **Symlink-aware** — resolves directory symlinks (Documents, Downloads) that macOS creates when "Desktop & Documents Folders" is enabled in iCloud, compatible with the rsync version bundled with macOS
 - **Logging** — timestamped logs in `~/Library/Logs/icloud-backup/`, auto-cleaned to the 10 most recent
 
 ## Requirements
@@ -140,7 +140,7 @@ If VeraCrypt is enabled, the encrypted volume is mounted before the backup and a
 
 ### Symlinked folders
 
-When "Desktop & Documents Folders" is enabled in iCloud settings, macOS places symlinks for Documents and Downloads inside iCloud Drive rather than real directories. The script uses rsync's `--copy-dirlinks` flag to follow these symlinks and back up their full contents as real directories.
+When "Desktop & Documents Folders" is enabled in iCloud settings, macOS places symlinks for Documents and Downloads inside iCloud Drive rather than real directories. The script detects these directory symlinks at runtime using `realpath` and passes rsync the resolved path directly, so their full contents are backed up as real directories. This approach works with the rsync version bundled with macOS (2.6.9), which predates the `--copy-dirlinks` flag and will crash if it is used.
 
 ## Logs
 
